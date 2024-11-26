@@ -189,3 +189,7 @@ NMDS[["points"]]
 #Permanova test
 adonis2(relab ~ temperature*time, data = metadata)
 
+
+####Normality tests and pairwise statistical analyses############
+
+
