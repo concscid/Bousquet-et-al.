@@ -191,5 +191,228 @@ adonis2(relab ~ temperature*time, data = metadata)
 
 
 ####Normality tests and pairwise statistical analyses############
+# Performe multiple Shapiro tests
+thi=sul
 
+A <- lapply(1:length(thi), function(col) {
+      ref = thi[[col]]
+      unlist(lapply(thi, function(i) shapiro.test(x = i)$p.value))
+    })
+  A
+  
+  # Create a table from the A list
+  p_values_table <- do.call(rbind, A)
+  # Column names
+  comparaisons <- c("RTcontrolsT0", "RTcontrolsT14", "RTcontrolsT28", "ConstantheatstressT14", "ConstantheatstressT28", "RepeatedheatstressT14", "RepeatedheatstressT28")
+  # Give column names 
+
+  colnames(p_values_table) <- comparaisons
+  # Define the names of the conditions tested
+  conditions <- c("RTcontrolsT0", "RTcontrolsT14", "RTcontrolsT28", "ConstantheatstressT14", "ConstantheatstressT28", "RepeatedheatstressT14", "RepeatedheatstressT28")
+  
+  # Replace the line numbers with the conditions
+  rownames(p_values_table) <- conditions
+  
+  # Display the table with the conditions as row names
+  p_values_table
+  
+  # Display the table of p-values
+  p_values_table <- as.data.frame(p_values_table)
+  p_values_table
+  
+  # Define a threshold for significance (here 0.05)
+  threshold <- 0.05
+  # Round p-values to 4 digits
+  p_values_table_rounded <- round(p_values_table, 4)
+  
+  # Add asterisk levels according to p-value (after rounding)
+  p_values_signif <- apply(p_values_table_rounded, 2, function(x) {
+    ifelse(x < 0.001, paste0(x, "***"), 
+           ifelse(x < 0.01, paste0(x, "**"),
+                  ifelse(x < 0.05, paste0(x, "*"), x)))
+  })
+  
+  # Convert to data frame for correct display
+  p_values_signif <- as.data.frame(p_values_signif)
+  
+  # Display the final table with rounded p-values and asterisks
+  p_values_signif
+  
+  # Creating an interactive board with colors
+  # Load DT package
+  library(DT)
+  
+  # Round p-values to 4 digits
+  p_values_table_rounded <- round(p_values_table, 4)
+  
+ 
+  datatable(p_values_table_rounded, 
+            options = list(pageLength = 10)) %>%
+    formatStyle(names(p_values_table_rounded), 
+                backgroundColor = styleInterval(c(0.001, 0.01, 0.05), c('darkred', 'red', 'orange', 'white')))
+
+  
+  
+  # Performed multiple one sided student  tests 
+  B <- lapply(1:length(thi), function(col) {
+    ref = thi[[col]]
+    unlist(lapply(thi, function(i) t.test(x = i, y = ref,alternative = "greater")$p.value))
+  })
+  B
+  
+  # Performed multiple one sided mann whitney tests 
+  B <- lapply(1:length(thi), function(col) {
+    ref = thi[[col]]
+    unlist(lapply(thi, function(i) wilcox.test(x = i, y = ref,alternative = "greater")$p.value))
+  })
+  B
+  
+  # Create a table from the A list
+  p_values_table <- do.call(rbind, B)
+  
+  # Column names
+  comparaisons <- c("RTcontrolsT0", "RTcontrolsT14", "RTcontrolsT28", "ConstantheatstressT14", "ConstantheatstressT28", "RepeatedheatstressT14", "RepeatedheatstressT28")
+  # Give column names
+  
+  colnames(p_values_table) <- comparaisons
+  # Define test condition names
+  conditions <- c("RTcontrolsT0", "RTcontrolsT14", "RTcontrolsT28", "ConstantheatstressT14", "ConstantheatstressT28", "RepeatedheatstressT14", "RepeatedheatstressT28")
+# Replace line numbers with conditions
+
+rownames(p_values_table) <- conditions
+  
+# Display table with conditions as row names
+  p_values_table
+  
+# Display the p-values table
+  p_values_table <- as.data.frame(p_values_table)
+  p_values_table
+  
+# Define a threshold for significance (here 0.05)
+  threshold <- 0.05
+  # Round p-values to 4 digits
+  p_values_table_rounded <- round(p_values_table, 4)
+  
+  # Add asterisk levels according to p-value (after rounding)
+  p_values_signif <- apply(p_values_table_rounded, 2, function(x) {
+    ifelse(x < 0.001, paste0(x, "***"), 
+           ifelse(x < 0.01, paste0(x, "**"),
+                  ifelse(x < 0.05, paste0(x, "*"), x)))
+  })
+  
+# Convert to data frame for correct display
+  p_values_signif <- as.data.frame(p_values_signif)
+  
+# Display final table with rounded p-values and asterisks
+  p_values_signif
+  
+  # Creating an interactive board with colors
+# Load DT package
+  library(DT)
+  
+  # Round p-values to 4 digits
+  p_values_table_rounded <- round(p_values_table, 4)
+  
+ 
+  datatable(p_values_table_rounded, 
+            options = list(pageLength = 10)) %>%
+    formatStyle(names(p_values_table_rounded), 
+                backgroundColor = styleInterval(c(0.001, 0.01, 0.05), c('darkred', 'red', 'orange', 'white')))
+  #Indicate file location
+  setwd("C:/Users/....")
+
+#Import file. Depending on your Windows language, you may need to use the read.csv or read.csv2 file.
+
+pang1 <- read.csv("C:/Users/.....pang1.csv"
+
+#Check the normality of the data first => Multiple Shapiro test.
+
+thi=read.csv2("pang1.csv")
+A <- lapply(1:length(thi), function(col) {
+  ref = thi[[col]]
+  unlist(lapply(thi, function(i) shapiro.test(x = i)$p.value))
+})
+A
+
+#If all data follow a normal distribution =>Tukey(HSD) with the agricolae package => parametric test
+
+library(agricolae)
+
+#Load dataset if not already done
+
+thi=read.csv2("panag1.csv")
+
+#Anova test (aov). Be careful with column names (uppercase, "s" at the end, etc)
+
+ANAV <- aov(Valeurs~Condition, data=thi)
+ANAV
+anova_result <- aov(Valeurs ~ Conditions, data = thi)
+anova_result
+
+#Tukey test =>post hoc test(HSD.test)
+out=HSD.test(ANAV,"Condition")
+out
+
+#The following line shows the stats for each group
+
+out$groups
+
+
+
+
+#If data do not follow a normal distribution, a Kruskal-Wallis test followed by a Dunn test (non-parametric) must be performed.
+
+
+library(dunn.test)
+
+
+# Load data
+  thi <- read.csv2("HME1.csv")
+
+#Perform the Kruskal-Wallis test
+kruskal_result <- kruskal.test(Valeurs ~ Conditions, data = thi)
+print(kruskal_result)
+
+#Dunn's post-hoc test
+
+dunn_results <- dunn.test(x = thi$Valeurs, g = thi$Conditions, list = TRUE, alpha = 0.05, method = "bonferroni")
+pvalues <- dunn_results$P.adjusted
+comparisons <- dunn_results$comparisons
+
+# Get the letters as a Tukey test
+#Create the comparison matrix
+conditions <- unique(thi$Conditions)
+comparison_matrix <- matrix(NA, nrow = length(conditions), ncol = length(conditions))
+rownames(comparison_matrix) <- conditions
+colnames(comparison_matrix) <- conditions
+
+#Fill the matrix with p-values
+# Use "-" as separator
+
+for (i in 1:length(comparisons)) {
+  groups <- unlist(strsplit(comparisons[i], " - ")) 
+  
+
+ # Do not fill in for identical comparisons
+ 
+  if (length(groups) == 2 && all(groups %in% rownames(comparison_matrix))) {
+    if (groups[1] != groups[2]) {  
+      comparison_matrix[groups[1], groups[2]] <- pvalues[i]
+      comparison_matrix[groups[2], groups[1]] <- pvalues[i]
+    }
+  } else {
+    warning(paste("Groups not found or incorrect number of groups:", paste(groups, collapse = ", ")))
+  }
+}
+
+
+# Using multcompLetters
+# Load multcompLetters
+library(multcomp)
+if (any(is.na(comparison_matrix))) {
+  stop("The comparison matrix contains missing values. Please check entries.")
+} else {
+  group_letters <- multcompLetters(comparison_matrix)$Letters
+  print(group_letters)
+}
 
