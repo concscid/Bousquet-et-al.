@@ -77,105 +77,25 @@ source deactivate anvio_env
 
 ##The summary generated contains all the relevant information (MAG abundance, completion, redundancy, functional traits annotated with COG and pfam...) that was used in this study. Plots were obtained using GraphPad Prism 9
 
-####Step 7: Annotation of genes of interest in the MAGs: 
-#### 7.1 Diamond blast against specific databases (CARD for antibiotic resistance genes, BacMet for metal resistance genes)
-###Example for Rhodoferax MAG and the CARD database, the same was done for all bins and databases, previously downloaded into the folder (databases created using diamond makedb)###
+####Step 7: Annotation of genes of interest in the MAGs and contigs: 
+#### 7.1 Diamond blast against specific databases (CARD for antibiotic resistance genes, BacMet for metal resistance genes, mobileOG for MGE-related genes)
+###Example for Rhodoferax MAG and the CARD database, the same was done for all MAGs and the contig file and all databases, previously downloaded into the folder (databases created using diamond makedb)###
 
 ###Blast the contig sequences against the database and filter based on aminoacid identity (>60%) and alignment length (>100 aa) - choose best-hit
 
 diamond blastx --db /databases/card.dmnd --query Rhodoferax-contigs.fa --evalue 0.00001 --out /card/card_contigsRhodoferax.txt -p 16 
-awk '$3>=60 && $4>=100 {print;} card_contigsRhodoferax.txt > filtered_cardRhodoferax.txt
+awk '$3>=60 && $4>=150 {print;} card_contigsRhodoferax.txt > filtered_cardRhodoferax.txt
 awk '!x[$1]++' filtered_cardRhodoferax.txt > besthit_cardRhodoferax.txt
 
-########METAGENOMIC SEQUENCING: ARG AND MRG SCREENING IN NON-ASSEMBLED READS######
-####Start from quality-filtered reads (step 1 in the previous code)
-####Step 2: conversion to fasta
-cd 01_QC
-for function in *.fastq; do
-fastx_toolkit/fastq_to_fasta -i $function -o $function.fasta -Q33
-done
-mkdir Fasta_File
-mv *.fasta Fasta_File
+####Creation of ARG / MRG / MGE bins to determine contig percentage of recruitment.
+###Creation of bins only with contigs containing ARGs (for instance) from the table obtained from blasting the contig file against the CARD database. Make a file with two columns: one with contig names and one with ARG name
+c_000000026967	aadA2
+c_00000003789	qnrB22
 
-###Step 3: concatenation of forward and reverse reads (without merging)
-cd Fasta_File
-ls *.fasta > sample_list.txt
-
-while read ligne
-do
-	sed 's/\(.*\)\(_R\).*/\1/' > liste_names.txt
-done < sample_list.txt
-
-nl liste_names.txt | sort --key 2 --unique | cut --fields 2 > liste_unique_names.txt
-
-while read name
-do
-	cat $name'_R1'.fastq.fasta  $name'_R2'.fastq.fasta > ./$name'concatenated'.fasta
-done < liste_noms_uniques.txt
-
-mkdir concatenated
-mv concatenated* concatenated
-
-####Step 4: blast against the CARD database (BacMet database was bacmet.dmnd)
-for file in *.fasta
-do
-diamond blastx --db /databases/card.dmnd --query $file --evalue 0.00001 --out /thermal/card_$file -p 16 
-done
-
-mkdir card_results
-mv card* card_results
-cd card_results
-
-for file in *.fasta
-do
-awk '$3>=60 && $4>=100 {print;} $file > filtered_$file
-done
-
-mkdir filtered
-mv filtered* filtered
-cd filtered
-
-for file in *.fasta
-do
-awk '!x[$1]++' $file > besthit_$file
-
-####Step 5: abundance analysis using R
-
-###Input: blast results (filtered) in .tsv format (one file per sample). Two columns: gene (gene names and accession numbers) and count (number of hits) Edit on excel as the example:
-###"gene"	"count"
-###"1"	"gb|AAA25550.1|ARO:3003105|dfrA3"	1
-###"2"	"gb|AAA26793|ARO:3003748|oleC"	1
-
-library(dplyr)
-library(tidyverse)
-
-###Create tables with unique gene columns per sample (do it individually for each sample):
-setwd("CARD")
-arg<-read.table(file ="noMPAB1.txt", header = TRUE, sep = "\t")
-arg2 <- arg %>% group_by(gene)
-arg3 <- arg2 %>% summarise(n = n())
-colnames(arg3)<-colnames(arg)
-write.table(arg3, "noMPAB2.tsv", sep ="\t")
-
-setwd("../")
-filenames<- list.files("CARD", pattern = "*.tsv", full.names=TRUE)
-ldf<-lapply(filenames, read.delim, fill=TRUE, header=TRUE)
-names(ldf)=str_remove(filenames,"^.*/")
-ldf2<-imap_dfr(ldf, ~cbind(.x,sample=.y))
-tab2<-pivot_wider(ldf2, names_from=sample, values_from=count, values_fill=0)
-write.table(tab2, "arg_counts.txt")
-
-###Gene counts were normalized per sequencing depth and plotted using GraphPad 9
-
-
-###########################Clustered heatmap########
-###Starting point: MAG abundance table obtained from anvi'o (percent of recruitment)
-
-repart <- read.table("mags.txt",head=TRUE, row.names=1)
-repart<-t(repart)
-scaleyellowred <- paletteer_c("ggthemes::Classic Orange-White-Blue", 10, -1)
-pheatmap(mat = repart, clustering_distance_rows="euclidean", clustering_distance_columns="euclidean", treeheight_row = 30, treeheight_col = 30, fontsize_row = 16, fontsize_col = 16,fontsize = 8, scale="column", border_color="black", cutree_rows=2, cutree_cols=2, color = scaleyellowred)
-
+##Import the file in anvi'o to generate a bin collection:
+  
+anvi-import-collection ARGs_contigs.txt -p PROFILE.db -c contigs.db -C ARG_collection
+###Now you can work with the bin collection in the anvi'o interactive web (using anvi-interactive to merge by class for example). To get percentage of recruitments use anvi-summarize and look for the percent_recruitment file in the generated folder.
 
 ############NMDS and PERMANOVA###########
 library(readr)
@@ -188,6 +108,27 @@ NMDS[["points"]]
 
 #Permanova test
 adonis2(relab ~ temperature*time, data = metadata)
+
+
+#################################METATRANSCRIPTOMIC SEQUENCE TREATMENT#####################
+###Step 1: quality control of short-reads using the criteria described by Minoche et al.
+mkdir 01_QC
+iu-gen-configs samples.txt -o 01_QC
+ls 01_QC/
+Sample_01.ini
+Sample_02.ini
+for ini in 01_QC/*.ini; do iu-filter-quality-minoche $ini; done
+
+#####Step 2: removal of artificial "G" generated by the NextSeq when sequences are empty (fragments <300 bp). Keep sequences of >50 nt.
+names='D0_1 D0_2 D0_3 D14_20_1 D14_20_2 D14_20_3 D14_28_1 D14_28_2 D14_28_3 D14_VAR_1 D14_VAR_2 D14_VAR_3 D28_20_1 D28_20_2 D28_20_3 D28_28_1 D28_28_2 D28_28_3 D28_VAR_1 D28_VAR_2 D28_VAR_3'
+for sample in $names
+do
+/miniconda3/bin/fastp --in1 ${sample}-QUALITY_PASSED_R1.fastq.gz --in2 ${sample}-QUALITY_PASSED_R2.fastq.gz --out1 ${sample}_R1.fastq.gz --out2 ${sample}_R2.fastq.gz -l 50
+done
+
+#####Sequence annotation: use diamond (as explained for metagenomics) but with short reads (without assembly). Databases used were CARD, mobileOG, COG20 and two custom-made Uniprot databases with all SOS response proteins and all heatshock proteins found in Uniprot.
+##Filtering criteria: 60% id, >25 aa length, e-value < 10^-5, best hit
+
 
 
 ####Normality tests and pairwise statistical analyses############
